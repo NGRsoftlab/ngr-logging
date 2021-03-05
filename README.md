@@ -1,2 +1,2 @@
-# ngr-logger
-logger module
+# ngr-logging
+logging module
