@@ -1,4 +1,4 @@
-module logging
+module github.com/NGRsoftlab/ngr-logging
 
 go 1.13
 
