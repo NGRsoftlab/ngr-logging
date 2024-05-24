@@ -1,22 +1,21 @@
-// Copyright 2020 NGR Softlab
-//
-// Logging - pack with common logger.
-//
+// Copyright 2020-2024 NGR Softlab
 package logging
 
 import (
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Default logger
 var Logger = NewLogger()
 
-// Logrus logger creation.
+// NewLogger Logrus logger creation.
 func NewLogger() *logrus.Logger {
+	// TODO: for future - write to local journalctl and to remote syslog (for example throw "log/syslog")
 	logger := &logrus.Logger{
-		Out:   io.MultiWriter(os.Stderr), // for future - write to local journalctl and to remote syslog (for example throw "log/syslog")
+		Out:   io.MultiWriter(os.Stderr),
 		Level: logrus.DebugLevel,
 		Formatter: &logrus.TextFormatter{
 			FullTimestamp:          true,
