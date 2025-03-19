@@ -1,4 +1,5 @@
-// Copyright 2020-2024 NGR Softlab
+// Copyright © NGR Softlab 2020-2025
+
 package logging
 
 import (
@@ -8,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Default logger
+// Logger - Default logger
 var Logger = NewLogger()
 
 // NewLogger Logrus logger creation.
