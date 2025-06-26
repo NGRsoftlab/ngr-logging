@@ -1,0 +1,145 @@
+// Copyright © NGR Softlab 2025
+
+package logging
+
+import (
+	"fmt"
+	"io"
+	"maps"
+	"os"
+	"slices"
+	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/diode"
+	"github.com/rs/zerolog/pkgerrors"
+	"go.uber.org/atomic"
+)
+
+const consoleKey = "console"
+
+type NgrZeroLogger struct {
+	logger *zerolog.Logger
+
+	outputs map[string]io.Writer
+
+	Product   string
+	Component string
+	Version   string
+	Hostname  string
+	Address   string
+
+	ShowProduct   atomic.Bool
+	ShowComponent atomic.Bool
+	ShowVersion   atomic.Bool
+	ShowHostname  atomic.Bool
+	ShowAddress   atomic.Bool
+}
+
+// Log - Default logger
+var Log = NewLogger("", "", "", "", "")
+
+var partsOrder = []string{"time", "level", "component", "version", "hostname", "address", "caller", "message"}
+var fieldsExclude = []string{"component", "version", "hostname", "address"}
+
+func NewLogger(product, component, version, hostname, address string) NgrZeroLogger {
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+	consoleOut := zerolog.ConsoleWriter{
+		Out:                   os.Stdout,
+		TimeFormat:            time.DateTime,
+		PartsOrder:            partsOrder,
+		FieldsExclude:         fieldsExclude,
+		FormatPartValueByName: formatPartByName,
+		FormatCaller:          formatCaller,
+	}
+
+	log := zerolog.New(os.Stdout).Output(consoleOut)
+
+	ngrLog := NgrZeroLogger{
+		Product:   product,
+		Component: component,
+		Version:   version,
+		Hostname:  hostname,
+		Address:   address,
+		outputs:   map[string]io.Writer{consoleKey: consoleOut},
+	}
+
+	// we skip additional caller frame here (default skipFrameCount is 2) because we wrap zerolog's methods (add 1 caller to the stack)
+	ctx := log.With().Timestamp().CallerWithSkipFrameCount(3)
+	// ctx = ctx.Str("product", ngrLog.Product)
+	ctx = ctx.Str("component", ngrLog.Component)
+	ctx = ctx.Str("version", ngrLog.Version)
+	ctx = ctx.Str("hostname", ngrLog.Hostname)
+	ctx = ctx.Str("address", ngrLog.Address)
+
+	log = ctx.Logger()
+	// log = log.With().Stack().Logger()
+
+	ngrLog.logger = &log
+
+	return ngrLog
+}
+
+func (l *NgrZeroLogger) SetOutput(w io.Writer) {
+	consoleWriter := zerolog.ConsoleWriter{
+		Out:                   w,
+		TimeFormat:            time.DateTime,
+		PartsOrder:            partsOrder,
+		FieldsExclude:         fieldsExclude,
+		FormatPartValueByName: formatPartByName,
+		FormatCaller:          formatCaller,
+	}
+
+	nl := l.logger.Output(consoleWriter)
+
+	l.outputs = make(map[string]io.Writer)
+	l.outputs[consoleKey] = consoleWriter
+
+	l.logger = &nl
+}
+
+func (l *NgrZeroLogger) AddOutput(key string, w io.Writer) {
+	nw := diode.NewWriter(w, 1000, 0, func(missed int) {
+		fmt.Printf("%s dropped %d messages\n", key, missed)
+	})
+	l.outputs[key] = nw
+	mw := io.MultiWriter(slices.Collect(maps.Values(l.outputs))...)
+
+	nl := l.logger.Output(mw)
+
+	l.logger = &nl
+}
+
+// RemoveOutput removes output by key
+func (l *NgrZeroLogger) RemoveOutput(key string) {
+	if _, exist := l.outputs[key]; !exist {
+		return
+	}
+
+	delete(l.outputs, key)
+
+	mw := io.MultiWriter(slices.Collect(maps.Values(l.outputs))...)
+	nl := l.logger.Output(mw)
+
+	l.logger = &nl
+}
+
+func formatPartByName(i interface{}, s string) string {
+	ret := fmt.Sprintf("%s", i)
+	if len(ret) == 0 {
+		return ""
+	}
+
+	switch s {
+	case "hostname":
+		ret = "(" + ret
+	case "address":
+		ret = "[" + ret + "])"
+	case "component":
+	case "version":
+		ret = "v" + ret
+	}
+
+	return ret
+}

@@ -1,4 +1,5 @@
 // Copyright 2020-2024 NGR Softlab
+
 package logging
 
 import (
@@ -6,45 +7,65 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
 )
 
+type Logger interface {
+	Debugf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
+	Warningf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+	Fatalf(format string, args ...interface{})
+	Panicf(format string, args ...interface{})
+
+	Debug(args ...interface{})
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Warning(args ...interface{})
+	Error(args ...interface{})
+	Fatal(args ...interface{})
+	Panic(args ...interface{})
+}
+
+var _ Logger = NewLogger("", "", "", "", "")
+
 func TestLogging(t *testing.T) {
-	Logger.Trace("trace msg1")
-	Logger.Debug("debug msg2")
-	Logger.Info("info msg3")
-	Logger.Warn("warn msg4")
+	Log.Trace("trace msg1")
+	Log.Debug("debug msg2")
+	Log.Info("info msg3")
+	Log.Warn("warn msg4")
 }
 
 func TestNewLogger(t *testing.T) {
 	tests := []struct {
 		name          string
-		expectedLevel logrus.Level
+		expectedLevel zerolog.Level
 		logMessage    string
 	}{
 		{
 			name:          "default logger settings",
-			expectedLevel: logrus.DebugLevel,
+			expectedLevel: zerolog.DebugLevel,
 			logMessage:    "Test debug message",
 		},
 		{
 			name:          "check trace level logging",
-			expectedLevel: logrus.TraceLevel,
+			expectedLevel: zerolog.TraceLevel,
 			logMessage:    "Test info message",
 		},
 		{
 			name:          "check info level logging",
-			expectedLevel: logrus.InfoLevel,
+			expectedLevel: zerolog.InfoLevel,
 			logMessage:    "Test info message",
 		},
 		{
 			name:          "check warn level logging",
-			expectedLevel: logrus.WarnLevel,
+			expectedLevel: zerolog.WarnLevel,
 			logMessage:    "Test info message",
 		},
 		{
 			name:          "check error level logging",
-			expectedLevel: logrus.ErrorLevel,
+			expectedLevel: zerolog.ErrorLevel,
 			logMessage:    "Test error message",
 		},
 	}
@@ -54,21 +75,19 @@ func TestNewLogger(t *testing.T) {
 			tt.name, func(t *testing.T) {
 				buf := new(bytes.Buffer)
 
-				logger := NewLogger()
-				logger.Out = buf
-				logger.Level = tt.expectedLevel
-				logger.ReportCaller = false
+				logger := NewLogger("", "", "", "", "")
+				logger.SetOutput(buf)
 
 				switch tt.expectedLevel {
-				case logrus.DebugLevel:
+				case zerolog.DebugLevel:
 					logger.Debug(tt.logMessage)
-				case logrus.TraceLevel:
+				case zerolog.TraceLevel:
 					logger.Trace(tt.logMessage)
-				case logrus.InfoLevel:
+				case zerolog.InfoLevel:
 					logger.Info(tt.logMessage)
-				case logrus.WarnLevel:
+				case zerolog.WarnLevel:
 					logger.Warn(tt.logMessage)
-				case logrus.ErrorLevel:
+				case zerolog.ErrorLevel:
 					logger.Error(tt.logMessage)
 				default:
 					panic("unhandled default case")
@@ -80,7 +99,7 @@ func TestNewLogger(t *testing.T) {
 					t.Errorf("\ngot: %s\nwant: %s", output, tt.logMessage)
 				}
 
-				if !strings.Contains(output, strings.ToUpper(tt.expectedLevel.String())) {
+				if !strings.Contains(output, zerolog.FormattedLevels[tt.expectedLevel]) {
 					t.Errorf("\ngot: %s\nwant: %s", output, tt.logMessage)
 				}
 			},
