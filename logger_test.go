@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -34,6 +35,7 @@ func TestLogging(t *testing.T) {
 	Log.Trace("trace msg1")
 	Log.Debug("debug msg2")
 	Log.Info("info msg3")
+	Log.With().Dur("duration", 100*time.Nanosecond).Error("duration test")
 	Log.Warn("warn msg4")
 }
 

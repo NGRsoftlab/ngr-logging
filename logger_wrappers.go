@@ -83,6 +83,30 @@ func (l NgrZeroLogger) Panic(args ...interface{}) {
 	l.logger.Panic().Msg(fmt.Sprint(args...))
 }
 
+// Print sends a log event using debug level and no extra field.
+// Arguments are handled in the manner of fmt.Print.
+func (l NgrZeroLogger) Print(args ...interface{}) {
+	l.logger.Print(args...)
+}
+
+// Printf sends a log event using debug level and no extra field.
+// Arguments are handled in the manner of fmt.Printf.
+func (l NgrZeroLogger) Printf(format string, args ...interface{}) {
+	l.logger.Printf(format, args...)
+}
+
+// Println sends a log event using debug level and no extra field.
+// Arguments are handled in the manner of fmt.Println.
+func (l NgrZeroLogger) Println(args ...interface{}) {
+	l.logger.Println(args...)
+}
+
+// Write implements the io.Writer interface. This is useful to set as a writer
+// for the standard library log.
+func (l NgrZeroLogger) Write(p []byte) (n int, err error) {
+	return l.logger.Write(p)
+}
+
 type Context struct {
 	zc     zerolog.Context
 	logger *NgrZeroLogger
@@ -349,6 +373,20 @@ func (c Context) Time(key string, t time.Time) Context {
 // Times adds the field key with t formatted as string using zerolog.TimeFieldFormat.
 func (c Context) Times(key string, t []time.Time) Context {
 	return Context{zc: c.zc.Times(key, t),
+		logger: c.logger,
+	}
+}
+
+// Dur adds the fields key with d divided by unit and stored as a float.
+func (c Context) Dur(key string, d time.Duration) Context {
+	return Context{zc: c.zc.Dur(key, d),
+		logger: c.logger,
+	}
+}
+
+// Durs adds the fields key with d divided by unit and stored as a float.
+func (c Context) Durs(key string, d []time.Duration) Context {
+	return Context{zc: c.zc.Durs(key, d),
 		logger: c.logger,
 	}
 }
