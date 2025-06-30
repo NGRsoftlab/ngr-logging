@@ -136,14 +136,14 @@ func (w *ClickhouseWriter) Write(p []byte) (n int, err error) {
 	timeStr, _ := row["time"].(string)
 	ts, _ := time.Parse(time.RFC3339Nano, timeStr)
 
-	extraValues := make([]any, 0, len(w.ExtraFields))
+	extraValues := make(map[string]any, len(w.ExtraFields))
 	details := make(map[string]interface{})
 	for k, v := range row {
 		switch k {
 		case "time", "component", "hostname", "address", "version", "level", "message":
 		default:
 			if slices.Contains(w.ExtraFields, k) {
-				extraValues = append(extraValues, row[k])
+				extraValues[k] = v
 				continue
 			}
 			details[k] = v
@@ -162,7 +162,10 @@ func (w *ClickhouseWriter) Write(p []byte) (n int, err error) {
 		row["message"],
 		detailsStr,
 	}
-	rowToAdd = append(rowToAdd, extraValues...)
+	for _, f := range w.ExtraFields {
+		rowToAdd = append(rowToAdd, extraValues[f])
+	}
+
 	if err = batch.Append(rowToAdd...); err != nil {
 		fmt.Println(err)
 		return 0, err
