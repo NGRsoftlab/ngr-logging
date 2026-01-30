@@ -1,6 +1,6 @@
 module github.com/NGRsoftlab/ngr-logging/writers/chwriter
 
-go 1.24.4
+go 1.25.5
 
 require github.com/ClickHouse/clickhouse-go/v2 v2.37.2
 
