@@ -431,6 +431,15 @@ func (c Context) MACAddr(key string, ha net.HardwareAddr) Context {
 	}
 }
 
+// CallerWithSkipFrameCount adds the file:line of the caller with the zerolog.CallerFieldName key.
+// The specified skipFrameCount int will override the global CallerSkipFrameCount for this context's respective logger.
+// If set to -1 the global CallerSkipFrameCount will be used.
+func (c Context) CallerWithSkipFrameCount(count int) Context {
+	return Context{zc: c.zc.CallerWithSkipFrameCount(count),
+		logger: c.logger,
+	}
+}
+
 func (c Context) Tracef(format string, args ...interface{}) {
 	c.Logger().logger.Trace().Msgf(format, args...)
 }
