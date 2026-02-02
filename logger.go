@@ -34,6 +34,8 @@ type NgrZeroLogger struct {
 	ShowVersion   atomic.Bool
 	ShowHostname  atomic.Bool
 	ShowAddress   atomic.Bool
+
+	skipFrameCount int // frames to additionally skip in getCaller. Needed to report caller if logger is wrapped
 }
 
 // Log - Default logger
@@ -43,6 +45,14 @@ var partsOrder = []string{"time", "level", "component", "version", "hostname", "
 var fieldsExclude = []string{"component", "version", "hostname", "address"}
 
 func NewLogger(product, component, version, hostname, address string) NgrZeroLogger {
+	ngrLog := NgrZeroLogger{
+		Product:   product,
+		Component: component,
+		Version:   version,
+		Hostname:  hostname,
+		Address:   address,
+	}
+
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	consoleOut := zerolog.ConsoleWriter{
@@ -51,19 +61,12 @@ func NewLogger(product, component, version, hostname, address string) NgrZeroLog
 		PartsOrder:            partsOrder,
 		FieldsExclude:         fieldsExclude,
 		FormatPartValueByName: formatPartByName,
-		FormatCaller:          formatCaller,
+		FormatCaller:          formatCaller(ngrLog.skipFrameCount),
 	}
 
 	log := zerolog.New(os.Stdout).Output(consoleOut)
 
-	ngrLog := NgrZeroLogger{
-		Product:   product,
-		Component: component,
-		Version:   version,
-		Hostname:  hostname,
-		Address:   address,
-		outputs:   map[string]io.Writer{consoleKey: consoleOut},
-	}
+	ngrLog.outputs = map[string]io.Writer{consoleKey: consoleOut}
 
 	// we skip additional caller frame here (default skipFrameCount is 2) because we wrap zerolog's methods (add 1 caller to the stack)
 	ctx := log.With().Timestamp().CallerWithSkipFrameCount(3)
@@ -88,7 +91,7 @@ func (l *NgrZeroLogger) SetOutput(w io.Writer) {
 		PartsOrder:            partsOrder,
 		FieldsExclude:         fieldsExclude,
 		FormatPartValueByName: formatPartByName,
-		FormatCaller:          formatCaller,
+		FormatCaller:          formatCaller(l.skipFrameCount),
 	}
 
 	nl := l.logger.Output(consoleWriter)
@@ -108,6 +111,13 @@ func (l *NgrZeroLogger) AddOutput(key string, w io.Writer) {
 
 	nl := l.logger.Output(mw)
 
+	l.logger = &nl
+}
+
+// updateOutputs repopulates logger's output from outputs slice
+func (l *NgrZeroLogger) updateOutputs() {
+	mw := io.MultiWriter(slices.Collect(maps.Values(l.outputs))...)
+	nl := l.logger.Output(mw)
 	l.logger = &nl
 }
 

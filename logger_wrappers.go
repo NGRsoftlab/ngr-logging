@@ -123,6 +123,7 @@ func (c Context) Logger() NgrZeroLogger {
 	nl := *c.logger
 	zl := c.zc.Logger()
 	nl.logger = &zl
+	nl.updateOutputs()
 	return nl
 }
 
@@ -433,10 +434,20 @@ func (c Context) MACAddr(key string, ha net.HardwareAddr) Context {
 
 // CallerWithSkipFrameCount adds the file:line of the caller with the zerolog.CallerFieldName key.
 // The specified skipFrameCount int will override the global CallerSkipFrameCount for this context's respective logger.
+// Usually needed in case the logger is wrapped.
 // If set to -1 the global CallerSkipFrameCount will be used.
 func (c Context) CallerWithSkipFrameCount(count int) Context {
+	childLogger := *c.logger
+	childLogger.skipFrameCount = count
+	if con, ok := childLogger.outputs[consoleKey]; ok {
+		if consWriter, good := con.(zerolog.ConsoleWriter); good {
+			consWriter.FormatCaller = formatCaller(count)
+			childLogger.outputs[consoleKey] = consWriter
+		}
+	}
+	childLogger.updateOutputs()
 	return Context{zc: c.zc.CallerWithSkipFrameCount(count),
-		logger: c.logger,
+		logger: &childLogger,
 	}
 }
 
@@ -453,11 +464,11 @@ func (c Context) Infof(format string, args ...interface{}) {
 }
 
 func (c Context) Warnf(format string, args ...interface{}) {
-	c.Logger().logger.Warn().Msgf(format, args...)
+	c.logger.Warnf(format, args...)
 }
 
 func (c Context) Warningf(format string, args ...interface{}) {
-	c.Logger().logger.Warn().Msgf(format, args...)
+	c.logger.Warnf(format, args...)
 }
 
 func (c Context) Errorf(format string, args ...interface{}) {
@@ -485,11 +496,11 @@ func (c Context) Info(args ...interface{}) {
 }
 
 func (c Context) Warn(args ...interface{}) {
-	c.Logger().logger.Warn().Msg(fmt.Sprint(args...))
+	c.Logger().Warn(args...)
 }
 
 func (c Context) Warning(args ...interface{}) {
-	c.Logger().logger.Warn().Msg(fmt.Sprint(args...))
+	c.Logger().Warn(args...)
 }
 
 func (c Context) Error(args ...interface{}) {

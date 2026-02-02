@@ -11,27 +11,29 @@ import (
 	"sync"
 )
 
-func formatCaller(i interface{}) string {
-	caller := getCaller()
-	if caller == nil {
-		return ""
-	}
-
-	var c string
-	// if cc, ok := i.(string); ok {
-	// 	c = cc
-	// }
-	c = fmt.Sprintf("%s:%d", caller.File, caller.Line)
-	if len(c) > 0 {
-		if cwd, err := os.Getwd(); err == nil {
-			if rel, err := filepath.Rel(cwd, c); err == nil {
-				c = rel
-			}
+func formatCaller(skipFrameCount int) func(i interface{}) string {
+	return func(i interface{}) string {
+		caller := getCaller(skipFrameCount)
+		if caller == nil {
+			return ""
 		}
-		// c = colorize(c, colorBold, noColor) + colorize(" >", colorCyan, noColor)
-		c = caller.Function + " " + c + " >"
+
+		var c string
+		// if cc, ok := i.(string); ok {
+		// 	c = cc
+		// }
+		c = fmt.Sprintf("%s:%d", caller.File, caller.Line)
+		if len(c) > 0 {
+			if cwd, err := os.Getwd(); err == nil {
+				if rel, err := filepath.Rel(cwd, c); err == nil {
+					c = rel
+				}
+			}
+			// c = colorize(c, colorBold, noColor) + colorize(" >", colorCyan, noColor)
+			c = caller.Function + " " + c + " >"
+		}
+		return c
 	}
-	return c
 }
 
 const (
@@ -52,7 +54,7 @@ var (
 )
 
 // getCaller retrieves the name of the first non-ConsoleWriter calling function
-func getCaller() *runtime.Frame {
+func getCaller(skipFrameCount int) *runtime.Frame {
 	// cache this package's fully-qualified name
 	callerInitOnce.Do(func() {
 		pcs := make([]uintptr, maximumCallerDepth)
@@ -80,6 +82,10 @@ func getCaller() *runtime.Frame {
 
 		// If the caller isn't part of this package, we're done
 		if pkg != ourPackage {
+			// skip additional frames if we're asked to (if our logger is wrapped)
+			for i := 0; i < skipFrameCount; i++ {
+				f, again = frames.Next()
+			}
 			return &f //nolint:scopelint
 		}
 	}
