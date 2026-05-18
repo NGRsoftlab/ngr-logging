@@ -1,4 +1,4 @@
-// Copyright 2020-2024 NGR Softlab
+// Copyright 2020-2026 NGR Softlab
 
 package logging
 
@@ -106,5 +106,100 @@ func TestNewLogger(t *testing.T) {
 				}
 			},
 		)
+	}
+}
+
+func TestConfiguredOutput(t *testing.T) {
+	type testParams struct {
+		fieldKey   string
+		fieldValue string
+		message    string
+		level      zerolog.Level
+		setOutput  func(*NgrZeroLogger, *bytes.Buffer)
+	}
+
+	tests := []struct {
+		name   string
+		params testParams
+		want   []string
+	}{
+		{
+			name: "writes console output debug with context field",
+			params: testParams{
+				fieldKey:   "chain_id",
+				fieldValue: "chain-1",
+				message:    "scanner chain completed",
+				level:      zerolog.DebugLevel,
+				setOutput: func(logger *NgrZeroLogger, buf *bytes.Buffer) {
+					logger.SetOutput(buf)
+				},
+			},
+			want: []string{
+				"scanner chain completed",
+				"chain_id=",
+				"chain-1",
+			},
+		},
+		{
+			name: "writes raw output info with context field",
+			params: testParams{
+				fieldKey:   "chain_id",
+				fieldValue: "chain-1",
+				message:    "raw message",
+				level:      zerolog.InfoLevel,
+				setOutput: func(logger *NgrZeroLogger, buf *bytes.Buffer) {
+					logger.SetRawOutput(buf)
+				},
+			},
+			want: []string{
+				`"message":"raw message"`,
+				`"chain_id":"chain-1"`,
+			},
+		},
+		{
+			name: "writes raw output debug with context field",
+			params: testParams{
+				fieldKey:   "chain_id",
+				fieldValue: "chain-1",
+				message:    "raw message",
+				level:      zerolog.DebugLevel,
+				setOutput: func(logger *NgrZeroLogger, buf *bytes.Buffer) {
+					logger.SetRawOutput(buf)
+				},
+			},
+			want: []string{
+				`"message":"raw message"`,
+				`"chain_id":"chain-1"`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := new(bytes.Buffer)
+
+			logger := NewLogger("", "", "", "", "")
+			tt.params.setOutput(&logger, buf)
+
+			child := logger.With().
+				Str(tt.params.fieldKey, tt.params.fieldValue).
+				Logger()
+
+			switch tt.params.level {
+			case zerolog.InfoLevel:
+				child.Info(tt.params.message)
+			case zerolog.DebugLevel:
+				child.Debug(tt.params.message)
+			default:
+				t.Fatalf("unhandled level: %s", tt.params.level)
+			}
+
+			output := buf.String()
+			for _, want := range tt.want {
+				if !strings.Contains(output, want) {
+					t.Errorf("\ngot: %s\nwant: %s", output, want)
+				}
+			}
+		})
 	}
 }
