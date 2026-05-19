@@ -1,13 +1,11 @@
-// Copyright © NGR Softlab 2025
+// Copyright © NGR Softlab 2025-2026
 
 package logging
 
 import (
 	"fmt"
 	"io"
-	"maps"
 	"os"
-	"slices"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -94,12 +92,18 @@ func (l *NgrZeroLogger) SetOutput(w io.Writer) {
 		FormatCaller:          formatCaller(l.skipFrameCount),
 	}
 
-	nl := l.logger.Output(consoleWriter)
-
 	l.outputs = make(map[string]io.Writer)
 	l.outputs[consoleKey] = consoleWriter
 
-	l.logger = &nl
+	l.logger = new(l.logger.Output(consoleWriter))
+}
+
+// SetRawOutput - switch logger output to the writer without console formatting.
+func (l *NgrZeroLogger) SetRawOutput(w io.Writer) {
+	l.outputs = make(map[string]io.Writer)
+	l.outputs[consoleKey] = w
+
+	l.logger = new(l.logger.Output(w))
 }
 
 func (l *NgrZeroLogger) AddOutput(key string, w io.Writer) {
@@ -107,18 +111,31 @@ func (l *NgrZeroLogger) AddOutput(key string, w io.Writer) {
 		fmt.Printf("%s dropped %d messages\n", key, missed)
 	})
 	l.outputs[key] = nw
-	mw := io.MultiWriter(slices.Collect(maps.Values(l.outputs))...)
-
-	nl := l.logger.Output(mw)
-
-	l.logger = &nl
+	l.updateOutputs()
 }
 
-// updateOutputs repopulates logger's output from outputs slice
+// updateOutputs - refresh zerolog output after the configured writers change.
 func (l *NgrZeroLogger) updateOutputs() {
-	mw := io.MultiWriter(slices.Collect(maps.Values(l.outputs))...)
-	nl := l.logger.Output(mw)
-	l.logger = &nl
+	l.logger = new(l.logger.Output(l.output()))
+}
+
+// output - build one writer from all configured outputs.
+func (l *NgrZeroLogger) output() io.Writer {
+	switch len(l.outputs) {
+	case 0:
+		return io.Discard
+	case 1:
+		for _, w := range l.outputs {
+			return w
+		}
+	}
+
+	writers := make([]io.Writer, 0, len(l.outputs))
+	for _, w := range l.outputs {
+		writers = append(writers, w)
+	}
+
+	return io.MultiWriter(writers...)
 }
 
 // RemoveOutput removes output by key
@@ -129,10 +146,7 @@ func (l *NgrZeroLogger) RemoveOutput(key string) {
 
 	delete(l.outputs, key)
 
-	mw := io.MultiWriter(slices.Collect(maps.Values(l.outputs))...)
-	nl := l.logger.Output(mw)
-
-	l.logger = &nl
+	l.updateOutputs()
 }
 
 func formatPartByName(i interface{}, s string) string {

@@ -1,4 +1,4 @@
-// Copyright © NGR Softlab 2025
+// Copyright © NGR Softlab 2025-2026
 
 package logging
 

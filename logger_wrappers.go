@@ -1,4 +1,4 @@
-// Copyright © NGR Softlab 2025
+// Copyright © NGR Softlab 2025-2026
 
 package logging
 
@@ -14,8 +14,7 @@ import (
 // Level creates a child logger with the minimum accepted level set to level.
 func (l *NgrZeroLogger) Level(lvl zerolog.Level) NgrZeroLogger {
 	child := *l
-	zl := child.logger.Level(lvl)
-	child.logger = &zl
+	child.logger = new(child.logger.Level(lvl))
 	return child
 }
 
@@ -52,35 +51,46 @@ func (l NgrZeroLogger) Panicf(format string, args ...interface{}) {
 }
 
 func (l NgrZeroLogger) Trace(args ...interface{}) {
-	l.logger.Trace().Msg(fmt.Sprint(args...))
+	l.logger.Trace().Msg(sprintArgs(args...))
 }
 
 func (l NgrZeroLogger) Debug(args ...interface{}) {
-	l.logger.Debug().Msg(fmt.Sprint(args...))
+	l.logger.Debug().Msg(sprintArgs(args...))
 }
 
 func (l NgrZeroLogger) Info(args ...interface{}) {
-	l.logger.Info().Msg(fmt.Sprint(args...))
+	l.logger.Info().Msg(sprintArgs(args...))
 }
 
 func (l NgrZeroLogger) Warn(args ...interface{}) {
-	l.logger.Warn().Msg(fmt.Sprint(args...))
+	l.logger.Warn().Msg(sprintArgs(args...))
 }
 
 func (l NgrZeroLogger) Warning(args ...interface{}) {
-	l.logger.Warn().Msg(fmt.Sprint(args...))
+	l.logger.Warn().Msg(sprintArgs(args...))
 }
 
 func (l NgrZeroLogger) Error(args ...interface{}) {
-	l.logger.Error().Msg(fmt.Sprint(args...))
+	l.logger.Error().Msg(sprintArgs(args...))
 }
 
 func (l NgrZeroLogger) Fatal(args ...interface{}) {
-	l.logger.Fatal().Msg(fmt.Sprint(args...))
+	l.logger.Fatal().Msg(sprintArgs(args...))
 }
 
 func (l NgrZeroLogger) Panic(args ...interface{}) {
-	l.logger.Panic().Msg(fmt.Sprint(args...))
+	l.logger.Panic().Msg(sprintArgs(args...))
+}
+
+// sprintArgs - keep one string argument unchanged and format all other arguments like fmt.Sprint.
+func sprintArgs(args ...interface{}) string {
+	if len(args) == 1 {
+		if msg, ok := args[0].(string); ok {
+			return msg
+		}
+	}
+
+	return fmt.Sprint(args...)
 }
 
 // Print sends a log event using debug level and no extra field.
@@ -118,12 +128,10 @@ func (l *NgrZeroLogger) With() Context {
 	}
 }
 
-// Logger returns the logger with the context previously set.
+// Logger - build a child logger with the collected context fields.
 func (c Context) Logger() NgrZeroLogger {
 	nl := *c.logger
-	zl := c.zc.Logger()
-	nl.logger = &zl
-	nl.updateOutputs()
+	nl.logger = new(c.zc.Logger())
 	return nl
 }
 
@@ -464,11 +472,11 @@ func (c Context) Infof(format string, args ...interface{}) {
 }
 
 func (c Context) Warnf(format string, args ...interface{}) {
-	c.logger.Warnf(format, args...)
+	c.Logger().logger.Warn().Msgf(format, args...)
 }
 
 func (c Context) Warningf(format string, args ...interface{}) {
-	c.logger.Warnf(format, args...)
+	c.Logger().logger.Warn().Msgf(format, args...)
 }
 
 func (c Context) Errorf(format string, args ...interface{}) {
@@ -484,33 +492,33 @@ func (c Context) Panicf(format string, args ...interface{}) {
 }
 
 func (c Context) Trace(args ...interface{}) {
-	c.Logger().logger.Trace().Msg(fmt.Sprint(args...))
+	c.Logger().logger.Trace().Msg(sprintArgs(args...))
 }
 
 func (c Context) Debug(args ...interface{}) {
-	c.Logger().logger.Debug().Msg(fmt.Sprint(args...))
+	c.Logger().logger.Debug().Msg(sprintArgs(args...))
 }
 
 func (c Context) Info(args ...interface{}) {
-	c.Logger().logger.Info().Msg(fmt.Sprint(args...))
+	c.Logger().logger.Info().Msg(sprintArgs(args...))
 }
 
 func (c Context) Warn(args ...interface{}) {
-	c.Logger().Warn(args...)
+	c.Logger().logger.Warn().Msg(sprintArgs(args...))
 }
 
 func (c Context) Warning(args ...interface{}) {
-	c.Logger().Warn(args...)
+	c.Logger().logger.Warn().Msg(sprintArgs(args...))
 }
 
 func (c Context) Error(args ...interface{}) {
-	c.Logger().logger.Error().Msg(fmt.Sprint(args...))
+	c.Logger().logger.Error().Msg(sprintArgs(args...))
 }
 
 func (c Context) Fatal(args ...interface{}) {
-	c.Logger().logger.Fatal().Msg(fmt.Sprint(args...))
+	c.Logger().logger.Fatal().Msg(sprintArgs(args...))
 }
 
 func (c Context) Panic(args ...interface{}) {
-	c.Logger().logger.Panic().Msg(fmt.Sprint(args...))
+	c.Logger().logger.Panic().Msg(sprintArgs(args...))
 }
