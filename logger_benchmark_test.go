@@ -1,3 +1,5 @@
+// Copyright © NGR Softlab 2025-2026
+
 package logging
 
 import (
@@ -11,20 +13,20 @@ import (
 )
 
 func newBenchmarkLogger() NgrZeroLogger {
-	logger := NewLogger("multicheck", "mp_scanner", "benchmark", "scanner-node", "127.0.0.1")
+	logger := NewLogger("product", "component", "benchmark", "hostname", "127.0.0.1")
 	logger.SetOutput(io.Discard)
 	return logger
 }
 
 func newBenchmarkRawLogger() NgrZeroLogger {
-	logger := NewLogger("multicheck", "mp_scanner", "benchmark", "scanner-node", "127.0.0.1")
+	logger := NewLogger("product", "component", "benchmark", "hostname", "127.0.0.1")
 	logger.SetRawOutput(io.Discard)
 	return logger
 }
 
 func BenchmarkContextLoggerWithFields(b *testing.B) {
 	logger := newBenchmarkLogger()
-	err := errors.New("scanner error")
+	err := errors.New("scan error")
 	var child NgrZeroLogger
 
 	b.ReportAllocs()
@@ -32,7 +34,7 @@ func BenchmarkContextLoggerWithFields(b *testing.B) {
 	for b.Loop() {
 		child = logger.With().
 			Str("chain_id", "chain-1").
-			Int("scanners_count", 3).
+			Int("count", 3).
 			Dur("duration", time.Second).
 			Err(err).
 			Logger()
@@ -47,7 +49,7 @@ func BenchmarkInfoPlainString(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		logger.Info("scanner chain completed")
+		logger.Info("chain completed")
 	}
 }
 
@@ -57,7 +59,7 @@ func BenchmarkInfoPlainStringRawOutput(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		logger.Info("scanner chain completed")
+		logger.Info("chain completed")
 	}
 }
 
@@ -68,6 +70,6 @@ func BenchmarkDisabledDebugPlainString(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		logger.Debug("scanner chain completed")
+		logger.Debug("chain completed")
 	}
 }
