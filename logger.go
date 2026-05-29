@@ -19,7 +19,8 @@ const consoleKey = "console"
 type NgrZeroLogger struct {
 	logger *zerolog.Logger
 
-	outputs map[string]io.Writer
+	outputs      map[string]io.Writer
+	activeOutput io.Writer
 
 	Product   string
 	Component string
@@ -65,6 +66,7 @@ func NewLogger(product, component, version, hostname, address string) NgrZeroLog
 	log := zerolog.New(os.Stdout).Output(consoleOut)
 
 	ngrLog.outputs = map[string]io.Writer{consoleKey: consoleOut}
+	ngrLog.activeOutput = consoleOut
 
 	// we skip additional caller frame here (default skipFrameCount is 2) because we wrap zerolog's methods (add 1 caller to the stack)
 	ctx := log.With().Timestamp().CallerWithSkipFrameCount(3)
@@ -94,6 +96,7 @@ func (l *NgrZeroLogger) SetOutput(w io.Writer) {
 
 	l.outputs = make(map[string]io.Writer)
 	l.outputs[consoleKey] = consoleWriter
+	l.activeOutput = consoleWriter
 
 	l.logger = new(l.logger.Output(consoleWriter))
 }
@@ -102,6 +105,7 @@ func (l *NgrZeroLogger) SetOutput(w io.Writer) {
 func (l *NgrZeroLogger) SetRawOutput(w io.Writer) {
 	l.outputs = make(map[string]io.Writer)
 	l.outputs[consoleKey] = w
+	l.activeOutput = w
 
 	l.logger = new(l.logger.Output(w))
 }
@@ -116,7 +120,9 @@ func (l *NgrZeroLogger) AddOutput(key string, w io.Writer) {
 
 // updateOutputs - refresh zerolog output after the configured writers change.
 func (l *NgrZeroLogger) updateOutputs() {
-	l.logger = new(l.logger.Output(l.output()))
+	out := l.output()
+	l.activeOutput = out
+	l.logger = new(l.logger.Output(out))
 }
 
 // output - build one writer from all configured outputs.
