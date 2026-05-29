@@ -131,7 +131,14 @@ func (l *NgrZeroLogger) With() Context {
 // Logger - build a child logger with the collected context fields.
 func (c Context) Logger() NgrZeroLogger {
 	nl := *c.logger
+	zl := c.zc.Logger()
 	nl.logger = new(c.zc.Logger())
+
+	if nl.activeOutput != nil {
+		zl = zl.Output(nl.activeOutput)
+	}
+	nl.logger = &zl
+
 	return nl
 }
 
