@@ -84,6 +84,11 @@ func NewLogger(product, component, version, hostname, address string) NgrZeroLog
 	return ngrLog
 }
 
+func (l *NgrZeroLogger) SetLevel(level zerolog.Level) {
+	newLogger := l.logger.Level(level)
+	l.logger = &newLogger
+}
+
 func (l *NgrZeroLogger) SetOutput(w io.Writer) {
 	consoleWriter := zerolog.ConsoleWriter{
 		Out:                   w,
